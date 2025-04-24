@@ -12,6 +12,7 @@ faiss-cpu>=1.7.3
 # # Document loaders & processing
 pillow>=9.0.0
 watchdog>=2.1.0
+docx2txt>=0.8
 
 # # Full-text search backup
 whoosh>=2.7.4

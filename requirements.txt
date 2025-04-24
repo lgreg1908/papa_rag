@@ -1,0 +1,23 @@
+# Core UI
+streamlit>=1.20.0,<2.0.0
+
+# # RAG & embeddings
+langchain>=0.0.262,<1.0.0
+openai>=0.27.0
+
+# # Vector store
+faiss-cpu>=1.7.3
+
+# # Document loaders & processing
+pillow>=9.0.0
+watchdog>=2.1.0
+
+# # Full-text search backup
+whoosh>=2.7.4
+
+# # Local embedding models
+sentence-transformers>=2.2.2
+torch>=1.13.0,<2.0.0
+
+# # Environment vars
+python-dotenv>=1.0.0

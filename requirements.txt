@@ -13,6 +13,7 @@ faiss-cpu>=1.7.3
 pillow>=9.0.0
 watchdog>=2.1.0
 docx2txt>=0.8
+pypdf>=3.0.0,<4.0.0
 
 # # Full-text search backup
 whoosh>=2.7.4

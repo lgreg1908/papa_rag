@@ -21,18 +21,55 @@ def list_supported_files(folder_path: str) -> List[str]:
                 file_paths.append(os.path.join(root, fname))
     return file_paths
 
-if __name__ == '__main__':
-    os.makedirs(name='tmp',exist_ok=True)
-    with open('tmp/test1.txt', 'w') as f:
-        f.write('.')
-    with open('tmp/test2.txt', 'w') as f:
-        f.write('.')
-    with open('tmp/test3.docx', 'w') as f:
-        f.write('.')
+def load_documents(paths: List[str]) -> List[Document]:
+    """
+    Load text documents from given file paths using LangChain loaders.
+    Returns a list of LangChain Document objects.
+    """
+    docs: List[Document] = []
+    for path in paths:
+        ext = os.path.splitext(path)[1].lower()
+        try:
+            if ext == ".pdf":
+                loader = PyPDFLoader(path)
+                docs.extend(loader.load())
+            elif ext == ".docx":
+                loader = Docx2txtLoader(path)
+                docs.extend(loader.load())
+            elif ext == ".txt":
+                loader = TextLoader(path, encoding="utf8")
+                docs.extend(loader.load())
+            elif ext == ".md":
+                loader = UnstructuredMarkdownLoader(path)
+                docs.extend(loader.load())
+        except Exception as e:
+            print(f"Error loading document {path}: {e}")
+    return docs
 
-    files = list_supported_files('tmp')
-    print(files)
-    import shutil
-    shutil.rmtree('tmp')
+def load_images(paths: List[str]) -> List[Tuple[str, Image.Image]]:
+    """
+    Load image files from given paths using PIL.
+    Returns a list of tuples: (file_path, PIL Image).
+    """
+    images: List[Tuple[str, Image.Image]] = []
+    for path in paths:
+        ext = os.path.splitext(path)[1].lower()
+        if ext in IMAGE_EXTENSIONS:
+            try:
+                img = Image.open(path)
+                images.append((path, img))
+            except Exception as e:
+                print(f"Error loading image {path}: {e}")
+    return images
+
+
+if __name__ == '__main__':
+
+    files = list_supported_files('data/tmp')
+    docs = load_documents(paths=files)
+    print(len(docs))
+
+    # print(files)
+
 
 

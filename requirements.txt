@@ -24,3 +24,6 @@ torch>=1.13.0,<2.0.0
 
 # # Environment vars
 python-dotenv>=1.0.0
+
+# # Jupyter Notebook env
+jupyter>=1.0.0,<2.0.0

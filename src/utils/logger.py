@@ -1,5 +1,11 @@
 from logging import Logger
 import logging
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+log_file: str = os.environ.get('LOG_PATH', 'logs/app.log')
 
 def get_logger(log_file: str, level: int = logging.INFO) -> Logger:
     """
@@ -23,3 +29,5 @@ def get_logger(log_file: str, level: int = logging.INFO) -> Logger:
 
     logger.addHandler(handler)
     return logger
+
+logger = get_logger(log_file=log_file)

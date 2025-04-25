@@ -78,15 +78,22 @@ def load_folder(folder_path: str) -> Tuple[List[Document], List[Tuple[str, Image
     imgs = load_images(img_paths)
     return docs, imgs
 
+def main() -> None:
+    folder_path = 'data/tmp'
+    print(f"Parsing the folder: {folder_path}")
+
+    paths = list_supported_files(folder_path)
+    print(f"Found {len(paths)} valid files.")
+
+    docs, imgs = load_folder(folder_path=folder_path)
+    print(f"Found {len(imgs)} pictures.")
+    print(f"Found {len(docs)} chunked docs.")
+    print(f"Sample doc: {docs[1]}")
+
+
 if __name__ == '__main__':
+    main()
 
-    paths = list_supported_files('data/tmp')
-    # docs = load_documents(paths=paths)
-    # print(len(docs))
-    img = load_images(paths=paths)
-    print(len(img))
-
-    # print(files)
 
 
 

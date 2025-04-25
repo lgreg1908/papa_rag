@@ -62,12 +62,29 @@ def load_images(paths: List[str]) -> List[Tuple[str, Image.Image]]:
                 print(f"Error loading image {path}: {e}")
     return images
 
+def load_folder(folder_path: str) -> Tuple[List[Document], List[Tuple[str, Image.Image]]]:
+    """
+    Load all supported files in the folder:
+      - Text documents → LangChain Document objects
+      - Images → (path, PIL Image)
+
+    Returns a tuple (documents, images).
+    """
+    paths = list_supported_files(folder_path)
+    text_paths = [i for i in paths if os.path.splitext(i)[1].lower() in TEXT_EXTENSIONS]
+    img_paths = [i for i in paths if os.path.splitext(i)[1].lower() in IMAGE_EXTENSIONS]
+
+    docs = load_documents(text_paths)
+    imgs = load_images(img_paths)
+    return docs, imgs
 
 if __name__ == '__main__':
 
-    files = list_supported_files('data/tmp')
-    docs = load_documents(paths=files)
-    print(len(docs))
+    paths = list_supported_files('data/tmp')
+    # docs = load_documents(paths=paths)
+    # print(len(docs))
+    img = load_images(paths=paths)
+    print(len(img))
 
     # print(files)
 

@@ -2,12 +2,12 @@
 import os
 import time
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from typing import Callable, List, Tuple
 from langchain.schema import Document
 from PIL import Image
 
-from .loader import (
+from src.ingestion.loader import (
     TEXT_EXTENSIONS,
     IMAGE_EXTENSIONS,
     load_documents,
@@ -37,7 +37,7 @@ class IngestionHandler(FileSystemEventHandler):
         super().__init__()
         self.ingest_callback = ingest_callback
 
-    def on_created(self, event):
+    def on_created(self, event: FileSystemEvent) -> None:
         """
         Called when a file or directory is created.
 
@@ -47,7 +47,7 @@ class IngestionHandler(FileSystemEventHandler):
         if not event.is_directory:
             self._process(event.src_path)
 
-    def on_modified(self, event):
+    def on_modified(self, event: FileSystemEvent) -> None:
         """
         Called when a file or directory is modified.
 
@@ -57,7 +57,7 @@ class IngestionHandler(FileSystemEventHandler):
         if not event.is_directory:
             self._process(event.src_path)
 
-    def _process(self, path: str):
+    def _process(self, path: str) -> None:
         """
         Internal processing of a single file path.
 
@@ -111,7 +111,7 @@ class FolderWatcher:
         self.event_handler = IngestionHandler(self.ingest_callback)
         self.observer = Observer()
 
-    def start(self):
+    def start(self) -> None:
         """
         Perform an initial full-folder ingest, then start monitoring for file changes.
 
@@ -132,7 +132,7 @@ class FolderWatcher:
         self.observer.start()
         logger.info(f"Started watching folder: {self.folder_path}")
 
-    def stop(self):
+    def stop(self) -> None:
         """
         Stop the observer and wait for its thread to terminate.
         """
@@ -140,7 +140,7 @@ class FolderWatcher:
         self.observer.join()
         logger.info(f"Stopped watching folder: {self.folder_path}")
 
-    def run(self):
+    def run(self) -> None:
         """
         Convenience method to start the watcher and run indefinitely until interrupted.
 

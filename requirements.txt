@@ -3,6 +3,7 @@ streamlit>=1.20.0,<2.0.0
 
 # # RAG & embeddings
 langchain>=0.0.262,<1.0.0
+langchain-community==0.3.22
 openai>=0.27.0
 
 # # Vector store
@@ -11,6 +12,8 @@ faiss-cpu>=1.7.3
 # # Document loaders & processing
 pillow>=9.0.0
 watchdog>=2.1.0
+docx2txt>=0.8
+pypdf>=3.0.0,<4.0.0
 
 # # Full-text search backup
 whoosh>=2.7.4
@@ -21,3 +24,9 @@ torch>=1.13.0,<2.0.0
 
 # # Environment vars
 python-dotenv>=1.0.0
+
+# # Jupyter Notebook env
+jupyter>=1.0.0,<2.0.0
+
+# # Pytest
+pytest>=7.4.0,<8.0.0

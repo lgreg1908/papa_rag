@@ -1,6 +1,12 @@
 import streamlit as st
 from dotenv import load_dotenv
 import os
+from src.ingestion.loader import (
+    list_supported_files, 
+    load_documents, 
+    load_folder, 
+    load_images)
+from src.ingestion.watcher import FolderWatcher
 
 # Load environment variables
 load_dotenv()
@@ -42,7 +48,18 @@ def main():
             folder = st.session_state.browse_path
             if folder and os.path.isdir(folder):
                 st.success(f"✔ Connected to folder: {folder}")
-                # TODO: hook into watcher.ingest_folder(folder)
+                
+                # List supported files
+                paths = list_supported_files(folder)
+                st.write(f"Found {len(paths)} supported files in folder.")
+
+                # Load documents and images with spinner
+                with st.spinner("Loading documents and images..."):
+                    docs = load_documents(paths)
+                    imgs = load_images(paths)
+                    
+                st.write(f"Loaded {len(docs)} document chunks and {len(imgs)} images.")
+                # TODO: real hook into watcher.ingest_folder(folder)
             else:
                 st.error("Invalid folder path selected.")
 

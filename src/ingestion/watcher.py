@@ -15,6 +15,8 @@ from .loader import (
     load_folder
 )
 from src.utils.logger import logger
+
+
 class IngestionHandler(FileSystemEventHandler):
     """
     Handles filesystem events and triggers ingestion for added or modified files.

@@ -27,3 +27,6 @@ python-dotenv>=1.0.0
 
 # # Jupyter Notebook env
 jupyter>=1.0.0,<2.0.0
+
+# # Pytest
+pytest>=7.4.0,<8.0.0

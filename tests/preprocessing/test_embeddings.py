@@ -1,9 +1,16 @@
-import os
 import pytest
+import numpy as np
+from PIL import Image
 from typing import List
-from openai import OpenAI
-from src.preprocessing.embeddings import get_text_embeddings, txt_cache
 
+from src.preprocessing.embeddings import (
+    get_text_embeddings,
+    txt_cache,
+    get_image_embeddings,
+    img_cache,
+)
+
+# Dummy classes for text embedding tests
 class DummyData:
     def __init__(self, embedding):
         self.embedding = embedding
@@ -12,53 +19,77 @@ class DummyResponse:
     def __init__(self, data):
         self.data = data
 
-class DummyClient:
+class DummyTextClient:
     def __init__(self):
         self.embeddings = self
         self.calls = []
 
     def create(self, input: List[str], model: str):
-        # record that we were called
         self.calls.append((tuple(input), model))
-        # return a DummyResponse: echo back simple vectors
         return DummyResponse([DummyData([float(len(s))]) for s in input])
 
-@pytest.fixture(autouse=True)
-def patch_openai_client(monkeypatch):
-    # Replace the OpenAI client in our module with DummyClient
-    from src.preprocessing.embeddings import client as real_client
-    dummy = DummyClient()
-    monkeypatch.setattr("src.preprocessing.embeddings.client", dummy)
-    # Clear cache before each test
-    txt_cache.clear()
-    return dummy
+# Dummy class for image embedding tests
+class DummyImageModel:
+    def __init__(self, model_name: str):
+        pass
 
-def test_get_text_embeddings_basic(patch_openai_client):
+    def encode(self, images: List[Image.Image], batch_size: int, convert_to_numpy: bool):
+        # Return numpy array where each vector equals its position index
+        vec = np.arange(len(images), dtype=float).reshape(-1, 1)
+        return vec
+
+@pytest.fixture(autouse=True)
+def patch_clients(monkeypatch):
+    # Patch clients for embeddings
+    from src.preprocessing import embeddings as emb_mod
+    dummy_text = DummyTextClient()
+    monkeypatch.setattr(emb_mod, 'client', dummy_text)
+    monkeypatch.setattr(emb_mod, 'SentenceTransformer', DummyImageModel)
+    # Clear caches before each test
+    txt_cache.clear()
+    img_cache.clear()
+    return dummy_text
+
+
+def test_get_text_embeddings_basic(patch_clients):
     inputs = ["a", "bb", "ccc"]
     embs = get_text_embeddings(inputs)
-
-    # DummyClient should have been called once
-    assert len(patch_openai_client.calls) == 1
-    called_input, called_model = patch_openai_client.calls[0]
-    assert called_input == tuple(inputs)
-    assert isinstance(called_model, str)
-
-    # Embeddings should be lists of floats equal to string lengths
+    # Should call API once
+    assert len(patch_clients.calls) == 1
+    assert patch_clients.calls[0][0] == tuple(inputs)
+    # Embeddings should match dummy logic (string lengths)
     assert embs == [[1.0], [2.0], [3.0]]
 
-def test_get_text_embeddings_caching(patch_openai_client):
-    inputs = ["repeat", "repeat", "unique"]
+
+def test_get_text_embeddings_caching(patch_clients):
+    inputs = ["x", "x", "y"]
     embs1 = get_text_embeddings(inputs)
-    # First call: one batch, API called once for both distinct strings
-    assert len(patch_openai_client.calls) == 1
-
-    # Clear only the recorded calls, but keep cache
-    patch_openai_client.calls.clear()
-
-    # Call again: both “repeat” and “unique” are now cached
+    assert len(patch_clients.calls) == 1
+    patch_clients.calls.clear()
     embs2 = get_text_embeddings(inputs)
-    # No new API calls should have been made
-    assert patch_openai_client.calls == []
-
-    # Results identical
+    # No new API calls on cached inputs
+    assert patch_clients.calls == []
     assert embs2 == embs1
+
+
+def test_get_image_embeddings_basic(patch_clients):
+    img1 = Image.new('RGB', (2, 2), color='red')
+    img2 = Image.new('RGB', (3, 3), color='blue')
+    embs = get_image_embeddings([img1, img2])
+    # Two distinct images => two vectors [0.0], [1.0]
+    assert isinstance(embs, list)
+    assert embs == [[0.0], [1.0]]
+    # Cache should have entries for both images
+    assert len(img_cache) == 2
+
+
+def test_get_image_embeddings_caching(patch_clients):
+    img = Image.new('RGB', (4, 4), color='green')
+    # First call populates cache with one key
+    embs1 = get_image_embeddings([img, img])
+    assert len(img_cache) == 1
+    cached_vec = next(iter(img_cache.values()))
+    # Second call should return the same cached vector twice
+    embs2 = get_image_embeddings([img, img])
+    assert embs2 == [cached_vec, cached_vec]
+    assert len(img_cache) == 1

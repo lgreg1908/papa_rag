@@ -18,7 +18,6 @@ TEXT_EMBED_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002")
 TEXT_BATCH_SIZE = 16
 CLIP_MODEL = os.getenv("CLIP_MODEL_NAME", "clip-ViT-B-32")
 
-
 # Simple in-memory cache
 txt_cache: Dict[str, List[float]] = {}
 img_cache: Dict[bytes, List[float]] = {}
@@ -56,7 +55,6 @@ def get_text_embeddings(texts: List[str]) -> List[List[float]]:
             txt_cache[batch[j]] = vector
 
     return embeddings
-
 
 def get_image_embeddings(images: List[Image.Image]) -> List[List[float]]:
     """

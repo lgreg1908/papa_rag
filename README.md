@@ -1,6 +1,6 @@
-# RAG Document Explorer
+# PapaRAG Document Explorer
 
-A local **RAG-enabled** (Retrieval-Augmented Generation) application to **explore, search, and interrogate** documents and images in any folder on your machine.  
+A local **RAG-enabled** (Retrieval-Augmented Generation) application to **explore, search, and interrogate** documents and images in any folder on your machine. It's called 'PapaRag' because it was built primariy to help my father - investigative journalist - navigate the thousands of documents collected in decades of work.
 
 **End Goal:**  
 - **Real-time ingestion** of documents (PDF, DOCX, TXT, MD) and images (PNG, JPG, JPEG) from a watched folder.  

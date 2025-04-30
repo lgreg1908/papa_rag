@@ -128,6 +128,7 @@ def embed_images(paths: List[str]) -> Dict[str, List[float]]:
     images = [Image.open(p) for p in paths]
     vecs = get_image_embeddings(images)
     return {p: v for p, v in zip(paths, vecs)}
+
 def main() -> None:
     """
     Demonstration of embed_documents and embed_images.

@@ -33,4 +33,4 @@ jupyter>=1.0.0,<2.0.0
 
 # # Pytest
 pytest>=7.4.0,<8.0.0
-
+pytest-timeout>=2.0.0,<3.0.0

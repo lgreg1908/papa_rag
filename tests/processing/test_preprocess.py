@@ -6,7 +6,7 @@ from datetime import datetime
 import pytest
 from langchain.schema import Document
 
-from src.preprocessing.preprocess import normalize_documents, extract_metadata
+from src.processing.preprocess import normalize_documents, extract_metadata
 
 def test_normalize_documents_whitespace_and_nonprintables():
     # Create a document with mixed whitespace, Windows line endings, tabs, and non-printable chars

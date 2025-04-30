@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 from langchain.schema import Document
 from PIL import Image
+import shutil
 
 # Load env vars
 load_dotenv()
@@ -16,7 +17,6 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
 TEXT_EMBED_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002")
 TEXT_BATCH_SIZE = 16
 CLIP_MODEL = os.getenv("CLIP_MODEL_NAME", "clip-ViT-B-32")
-
 
 # Simple in-memory cache
 txt_cache: Dict[str, List[float]] = {}
@@ -56,7 +56,6 @@ def get_text_embeddings(texts: List[str]) -> List[List[float]]:
 
     return embeddings
 
-
 def get_image_embeddings(images: List[Image.Image]) -> List[List[float]]:
     """
     Returns embeddings for a list of PIL Images using a CLIP model, with caching on image bytes.
@@ -94,34 +93,73 @@ def get_image_embeddings(images: List[Image.Image]) -> List[List[float]]:
 
     return outputs
 
+def embed_documents(docs: List[Document]) -> List[Document]:
+    """
+    Adds text embeddings to each Document's metadata under 'embedding'.
+
+    Args:
+        docs: List of LangChain Document objects.
+
+    Returns:
+        A new list of Document objects with embeddings in metadata.
+    """
+    texts = [d.page_content for d in docs]
+    embs = get_text_embeddings(texts)
+    result: List[Document] = []
+    for doc, vec in zip(docs, embs):
+        meta = dict(doc.metadata)
+        meta['embedding'] = vec
+        result.append(Document(page_content=doc.page_content, metadata=meta))
+    return result
+
+def embed_images(paths: List[str]) -> Dict[str, List[float]]:
+    """
+    Returns a mapping from image file path to its embedding vector.
+
+    Args:
+        paths: List of image file paths.
+
+    Returns:
+        Dict mapping path to embedding vector.
+    """
+    images = [Image.open(p) for p in paths]
+    vecs = get_image_embeddings(images)
+    return {p: v for p, v in zip(paths, vecs)}
 
 def main() -> None:
     """
-    Demonstration of text and image embeddings.
+    Demonstration of embed_documents and embed_images.
     """
     # Sample texts
     texts = [
         "The quick brown fox jumps over the lazy dog.",
         "Streamlit makes it easy to build data apps in Python."
     ]
-    print(f"Text inputs ({len(texts)}):")
-    for i, t in enumerate(texts, start=1):
-        print(f"  {i}. {t}")
+    docs = [Document(page_content=t, metadata={}) for t in texts]
+    print(f"Embedding {len(docs)} sample documents...")
+    embedded_docs = embed_documents(docs)
+    for i, doc in enumerate(embedded_docs, start=1):
+        vec = doc.metadata['embedding']
+        print(f"Doc {i}: first 5 dims: {vec[:5]}... length {len(vec)}")
 
-    text_embs = get_text_embeddings(texts)
-    print("\nText Embeddings (first 5 dims):")
-    for i, vec in enumerate(text_embs, start=1):
-        print(f"  Sample {i}: {vec[:5]}... (len={len(vec)})")
-
-    # Sample images: create two 10x10 red and blue squares
-    img1 = Image.new("RGB", (10, 10), color="red")
-    img2 = Image.new("RGB", (10, 10), color="blue")
-    print(f"\nImage inputs: 2 generated images")
-
-    img_embs = get_image_embeddings([img1, img2])
-    print("Image Embeddings (first 5 dims):")
-    for i, vec in enumerate(img_embs, start=1):
-        print(f"  Image {i}: {vec[:5]}... (len={len(vec)})")
+    # Sample images saved to temp
+    temp_dir = os.path.join(os.getcwd(), 'temp_emb_imgs')
+    os.makedirs(temp_dir, exist_ok=True)
+    paths: List[str] = []
+    for color, fname in [('red', 'red.png'), ('blue', 'blue.png')]:
+        p = os.path.join(temp_dir, fname)
+        Image.new("RGB", (10, 10), color=color).save(p)
+        paths.append(p)
+    print(f"\nEmbedding {len(paths)} sample images... stored at: {paths}")
+    embedded_imgs = embed_images(paths)
+    for i, p in enumerate(paths, start=1):
+        vec = embedded_imgs[p]
+        print(f"Img {i} ({os.path.basename(p)}): first 5 dims: {vec[:5]}... length {len(vec)}")
+    try:
+        shutil.rmtree(temp_dir)
+        print(f"Removed temp directory: {temp_dir}")
+    except Exception as e:
+        print(f"Failed to remove temp dir {temp_dir}: {e}")
 
 if __name__ == "__main__":
     main()

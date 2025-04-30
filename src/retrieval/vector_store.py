@@ -36,7 +36,7 @@ class FaissVectorStore:
         """
         if os.path.exists(self.index_path) and os.path.exists(self.meta_path):
             self.index = faiss.read_index(self.index_path)
-            with open(self.meta_path, 'r') as f:
+            with open(self.meta_path, 'rb') as f:
                 self.metadata = pickle.load(f) 
         
         else:
@@ -159,6 +159,6 @@ def main() -> None:
         print(f"{rank}. source={doc.metadata['source']}, embedding={doc.metadata['embedding']}")
     os.remove('data/embeddings_test.faiss')
     os.remove('data/metadata_test.pkl')
-    
+
 if __name__ == "__main__":
     main()

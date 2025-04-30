@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image
 from typing import List
 
-from src.preprocessing.embeddings import (
+from src.processing.embeddings import (
     get_text_embeddings,
     txt_cache,
     get_image_embeddings,
@@ -41,7 +41,7 @@ class DummyImageModel:
 @pytest.fixture(autouse=True)
 def patch_clients(monkeypatch):
     # Patch clients for embeddings
-    from src.preprocessing import embeddings as emb_mod
+    from src.processing import embeddings as emb_mod
     dummy_text = DummyTextClient()
     monkeypatch.setattr(emb_mod, 'client', dummy_text)
     monkeypatch.setattr(emb_mod, 'SentenceTransformer', DummyImageModel)

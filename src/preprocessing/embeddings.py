@@ -114,7 +114,6 @@ def embed_documents(docs: List[Document]) -> List[Document]:
         result.append(Document(page_content=doc.page_content, metadata=meta))
     return result
 
-
 def embed_images(paths: List[str]) -> Dict[str, List[float]]:
     """
     Returns a mapping from image file path to its embedding vector.

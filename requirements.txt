@@ -1,10 +1,13 @@
 # Core UI
 streamlit>=1.20.0,<2.0.0
 
+# Force NumPy 1.x for compatibility with compiled extensions
+numpy>=1.23.0,<2.0.0
+
 # # RAG & embeddings
 langchain>=0.0.262,<1.0.0
 langchain-community==0.3.22
-openai>=0.27.0
+openai>=1.0.0
 
 # # Vector store
 faiss-cpu>=1.7.3
@@ -20,7 +23,7 @@ whoosh>=2.7.4
 
 # # Local embedding models
 sentence-transformers>=2.2.2
-torch>=1.13.0,<2.0.0
+torch>=2.0.0,<3.0.0
 
 # # Environment vars
 python-dotenv>=1.0.0
@@ -30,3 +33,4 @@ jupyter>=1.0.0,<2.0.0
 
 # # Pytest
 pytest>=7.4.0,<8.0.0
+pytest-timeout>=2.0.0,<3.0.0

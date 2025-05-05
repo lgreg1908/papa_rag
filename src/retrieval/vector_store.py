@@ -27,6 +27,7 @@ class FaissVectorStore:
         self.meta_path = meta_path
         self.index: Optional[faiss.Index]=None
         self.metadata: List[dict] = []
+        self._load()
 
     
     def _load(self) -> None:

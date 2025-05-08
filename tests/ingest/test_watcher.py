@@ -1,9 +1,9 @@
 import time
 from pathlib import Path
+import threading
 import pytest
-from PIL import Image
-from langchain.schema import Document
 
+from langchain.schema import Document
 from src.ingestion.watcher import IngestionHandler, FolderWatcher
 
 class DummyEvent:
@@ -12,6 +12,7 @@ class DummyEvent:
         self.src_path = src_path
         self.is_directory = is_directory
 
+
 def test_ingestion_handler_process_text(tmp_path: Path):
     # Create a sample .txt
     file = tmp_path / "sample.txt"
@@ -19,27 +20,27 @@ def test_ingestion_handler_process_text(tmp_path: Path):
 
     # Capture callback inputs
     received = []
-    def cb(docs, imgs):
-        received.append((docs, imgs))
+    def cb(docs):
+        received.append(docs)
 
     handler = IngestionHandler(cb)
     # Directly invoke the private _process
     handler._process(str(file))
 
-    # Should have been called exactly once, docs non-empty, no images
+    # Should have been called exactly once, docs non-empty
     assert len(received) == 1
-    docs, imgs = received[0]
+    docs = received[0]
     assert isinstance(docs, list)
     assert len(docs) >= 1
     assert all(isinstance(d, Document) for d in docs)
-    assert imgs == []
+
 
 def test_ingestion_handler_on_created_and_modified(tmp_path: Path):
     file = tmp_path / "foo.txt"
     file.write_text("data", encoding="utf-8")
 
     calls = []
-    handler = IngestionHandler(lambda d,i: calls.append((d,i)))
+    handler = IngestionHandler(lambda docs: calls.append(docs))
 
     # Simulate FileSystemEvent calls
     ev = DummyEvent(str(file), is_directory=False)
@@ -48,36 +49,37 @@ def test_ingestion_handler_on_created_and_modified(tmp_path: Path):
 
     # Both should invoke _process
     assert len(calls) == 2
+    for docs in calls:
+        assert all(isinstance(d, Document) for d in docs)
+
 
 def test_folder_watcher_initial_load(tmp_path: Path):
-    # Prepare folder with one text and one image
+    # Prepare folder with one text file and one non-text file
     folder = tmp_path / "watch"
     folder.mkdir()
 
     txt = folder / "a.txt"
     txt.write_text("abc", encoding="utf-8")
 
-    img_path = folder / "b.png"
-    img = Image.new("RGB", (4, 4), color="blue")
-    img.save(img_path)
+    other = folder / "b.png"
+    other.write_bytes(b"not an image")  # loader ignores non-text
 
     # Collect callback invocations
     calls = []
-    def cb(docs, imgs):
-        calls.append((docs, imgs))
+    def cb(docs):
+        calls.append(docs)
 
     watcher = FolderWatcher(str(folder), cb)
     watcher.start()
 
     # Initial load only
     assert len(calls) == 1
-    docs, imgs = calls[0]
-    # Text loader yields at least one Document; image loader yields one image
+    docs = calls[0]
+    # Text loader yields at least one Document; non-text ignored
     assert any(isinstance(d, Document) for d in docs)
-    assert len(imgs) == 1
-    assert imgs[0][0].endswith("b.png")
 
     watcher.stop()
+
 
 @pytest.mark.timeout(2)
 def test_folder_watcher_detects_new_file(tmp_path: Path):
@@ -86,12 +88,11 @@ def test_folder_watcher_detects_new_file(tmp_path: Path):
     folder.mkdir()
 
     calls = []
-    def cb(docs, imgs):
-        calls.append((docs, imgs))
+    def cb(docs):
+        calls.append(docs)
 
     watcher = FolderWatcher(str(folder), cb)
     # Run watcher in background
-    import threading
     thread = threading.Thread(target=watcher.run, daemon=True)
     thread.start()
 
@@ -110,7 +111,6 @@ def test_folder_watcher_detects_new_file(tmp_path: Path):
 
     # There should be at least two calls: initial load + the new file
     assert len(calls) >= 2
-    # The last call should reflect the new file
-    docs, imgs = calls[-1]
+    # The last call should reflect the new file content
+    docs = calls[-1]
     assert any("fresh" in d.page_content for d in docs)
-    assert imgs == []

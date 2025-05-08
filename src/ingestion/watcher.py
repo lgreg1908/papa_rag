@@ -3,15 +3,12 @@ import os
 import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
-from typing import Callable, List, Tuple
+from typing import Callable, List
 from langchain.schema import Document
-from PIL import Image
 
 from src.ingestion.loader import (
     TEXT_EXTENSIONS,
-    IMAGE_EXTENSIONS,
     load_documents,
-    load_images,
     load_folder
 )
 from src.utils.logger import logger
@@ -25,7 +22,7 @@ class IngestionHandler(FileSystemEventHandler):
     def __init__(
         self,
         ingest_callback: Callable[
-            [List[Document], List[Tuple[str, Image.Image]]], None
+            [List[Document]], None
         ],
     ):
         """
@@ -69,19 +66,15 @@ class IngestionHandler(FileSystemEventHandler):
         """
         ext = os.path.splitext(path)[1].lower()
         docs: List[Document] = []
-        imgs: List[Tuple[str, Image.Image]] = []
         try:
             if ext in TEXT_EXTENSIONS:
                 docs = load_documents([path])
                 logger.info(f"Loaded {len(docs)} document chunks from {path}")
-            elif ext in IMAGE_EXTENSIONS:
-                imgs = load_images([path])
-                logger.info(f"Loaded {len(imgs)} images from {path}")
             else:
                 return
 
             # Trigger downstream ingestion
-            self.ingest_callback(docs, imgs)
+            self.ingest_callback(docs)
             logger.info(f"Ingestion callback executed for {path}")
         except Exception as e:
             logger.error(f"Error processing file {path}: {e}")
@@ -96,7 +89,7 @@ class FolderWatcher:
         self,
         folder_path: str,
         ingest_callback: Callable[
-            [List[Document], List[Tuple[str, Image.Image]]], None
+            [List[Document]], None
         ],
     ):
         """
@@ -118,11 +111,11 @@ class FolderWatcher:
         Ingests existing files, schedules the observer, and begins watching recursively.
         """
         try:
-            docs, imgs = load_folder(self.folder_path)
+            docs = load_folder(self.folder_path)
             logger.info(
-                f"Initial load: {len(docs)} docs, {len(imgs)} images from {self.folder_path}"
+                f"Initial load: {len(docs)} docs from {self.folder_path}"
             )
-            self.ingest_callback(docs, imgs)
+            self.ingest_callback(docs)
         except Exception as e:
             logger.error(f"Error during initial folder load: {e}")
 
@@ -157,9 +150,9 @@ def main():
     """
     CLI entrypoint: watches 'data/tmp' folder and logs ingestion events to console.
     """
-    folder = 'data/tmp'
-    def ingest_callback(docs: List[Document], imgs: List[Tuple[str, Image.Image]]):
-        print(f"Ingested {len(docs)} documents and {len(imgs)} images from {folder}")
+    folder = 'data/sample'
+    def ingest_callback(docs: List[Document]):
+        print(f"Ingested {len(docs)} documents from {folder}")
 
     watcher = FolderWatcher(folder, ingest_callback)
     watcher.run()

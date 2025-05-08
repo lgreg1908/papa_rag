@@ -2,10 +2,8 @@ import os
 from typing import List, Dict
 from openai import OpenAI
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer
 from langchain.schema import Document
-from PIL import Image
-import shutil
+
 
 # Load env vars
 load_dotenv()

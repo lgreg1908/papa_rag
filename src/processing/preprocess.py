@@ -65,8 +65,8 @@ def main() -> None:
     # Example: load sample docs
     from src.ingestion.loader import load_folder
 
-    folder = 'data/tmp'
-    docs, _ = load_folder(folder)
+    folder = 'data/sample'
+    docs = load_folder(folder)
     print(f"Loaded {len(docs)} raw document chunks.")
 
     # Normalize

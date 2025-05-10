@@ -1,7 +1,5 @@
 import re
-import os
-from typing import List, Dict
-from datetime import datetime
+from typing import List
 from langchain.schema import Document
 
 
@@ -34,30 +32,6 @@ def normalize_documents(docs: List[Document]) -> List[Document]:
     return normalized
 
 
-def extract_metadata(docs: List[Document]) -> List[Dict]:
-    """
-    Extracts and augments metadata for each Document:
-      - source path
-      - character length
-      - file creation timestamp
-
-    Args:
-        docs: List of LangChain Document objects
-    Returns:
-        List of metadata dictionaries
-    """
-    results = []
-    for doc in docs:
-        meta = dict(doc.metadata)
-        source = meta.get('source') or meta.get('file_path')
-        if source and os.path.exists(source):
-            meta['char_count'] = len(doc.page_content)
-            ts = os.path.getctime(source)
-            meta['created_at'] = datetime.fromtimestamp(ts).isoformat()
-        results.append(meta)
-    return results
-
-
 def main() -> None:
     """
     Demonstration of normalize_documents and extract_metadata functions.
@@ -72,10 +46,6 @@ def main() -> None:
     # Normalize
     norm_docs = normalize_documents(docs)
     print(f"Normalized {len(norm_docs)} documents.\nSample content:\n{norm_docs[0].page_content[:100]}...\n")
-
-    # Extract metadata
-    metas = extract_metadata(norm_docs)
-    print(f"Extracted metadata for {len(metas)} documents.\nSample metadata:\n{metas[0]}")
 
 if __name__ == '__main__':
     main()

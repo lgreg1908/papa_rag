@@ -42,7 +42,21 @@ class FaissVectorStore:
         else:
             self.index = None
             self.metadata = []
-    
+
+    def _save(self) -> None:
+        """
+        Persist the FAISS index and metadata list to disk.
+        """
+        # Check if dirs exist
+        for path in (self.index_path, self.meta_path):
+            dirpath = os.path.dirname(path)
+            if dirpath and not os.path.exists(dirpath):
+                os.makedirs(dirpath, exist_ok=True)
+        
+        faiss.write_index(self.index, self.index_path)
+        with open(self.meta_path, 'wb') as f:
+            pickle.dump(self.metadata, f)
+            
     def add_documents(self, docs: List[Document]) -> None:
         """
         Add documents (must have 'embedding' in metadata) to the index.
@@ -96,20 +110,6 @@ class FaissVectorStore:
                 meta = self.metadata[idx]
                 results.append(Document(page_content='', metadata=meta))
         return results
-
-    def _save(self) -> None:
-        """
-        Persist the FAISS index and metadata list to disk.
-        """
-        # Check if dirs exist
-        for path in (self.index_path, self.meta_path):
-            dirpath = os.path.dirname(path)
-            if dirpath and not os.path.exists(dirpath):
-                os.makedirs(dirpath, exist_ok=True)
-        
-        faiss.write_index(self.index, self.index_path)
-        with open(self.meta_path, 'wb') as f:
-            pickle.dump(self.metadata, f)
     
     def delete(self) -> None:
         """

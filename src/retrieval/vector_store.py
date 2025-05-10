@@ -25,11 +25,10 @@ class FaissVectorStore:
 
         self.index_path = index_path
         self.meta_path = meta_path
-        self.index: Optional[faiss.Index]=None
+        self.index: Optional[faiss.Index] = None
         self.metadata: List[dict] = []
         self._load()
 
-    
     def _load(self) -> None:
         """
         Load existing index and metadata from disk, if available.

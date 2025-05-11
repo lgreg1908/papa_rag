@@ -3,7 +3,7 @@
 A local **RAG-enabled** (Retrieval-Augmented Generation) application to **explore, search, and interrogate** documents and images in any folder on your machine. It's called 'PapaRag' because it was built primariy to help my father - investigative journalist - navigate the thousands of documents collected in decades of work.
 
 **End Goal:**  
-- **Real-time ingestion** of documents (PDF, DOCX, TXT, MD) and images (PNG, JPG, JPEG) from a watched folder.  
+- **Real-time ingestion** of documents (PDF, DOCX, TXT, MD).  
 - **Preprocessing**: normalize text, extract metadata (timestamps, char counts).  
 - **Embedding**: generate semantic vectors for text (OpenAI) and images (CLIP), with caching.  
 - **Vector store & retrieval**: FAISS-based nearest-neighbor search + full-text fallback.  
@@ -13,16 +13,15 @@ A local **RAG-enabled** (Retrieval-Augmented Generation) application to **explor
 
 ---
 
-## 🚀 Current Version
+## Current Version
 
-We’ve built the core ingestion and embedding pipeline, plus a minimal Streamlit frontend:
+We’ve built the core ingestion and embedding pipeline, plus a minimal Streamlit frontend. Currently only works with text data.
 
 ### Ingestion
 - **`src/ingestion/loader.py`** —  
   • `list_supported_files(folder_path)`  
   • `load_documents(paths)` → LangChain `Document` objects  
-  • `load_images(paths)` → `(path, PIL.Image)` tuples  
-  • `load_folder(folder_path)` → `(docs, imgs)`
+  • `load_folder(folder_path)` → `docs`
 
 - **`src/ingestion/watcher.py`** —  
   • `FolderWatcher(folder, callback)` watches and triggers on-create/on-modify events  
@@ -31,13 +30,17 @@ We’ve built the core ingestion and embedding pipeline, plus a minimal Streamli
 ### Processing
 - **`src/processing/preprocess.py`** —  
   • `normalize_documents(docs)`  
-  • `extract_metadata(docs)`
 
 - **`src/processing/embeddings.py`** —  
   • `get_text_embeddings(texts)` (OpenAI v1 SDK + cache)  
-  • `get_image_embeddings(images)` (CLIP via `sentence-transformers` + cache)  
   • `embed_documents(docs)`  
-  • `embed_images(paths)`
+
+### Retrieval
+- **`src/retrieval/vector_store.py`** —  
+  • `FaissVectorStore(index_path, meta_path)`
+
+- **`src/retrieval/retriever.py`** —  
+  • `Retriever(vector_store, whoosh_index_dir, whoosh_field)` retrieves from store with optional whoops keyword fallback
 
 ### Frontend
 - **`src/app.py`** (Streamlit) —  
@@ -51,11 +54,11 @@ We’ve built the core ingestion and embedding pipeline, plus a minimal Streamli
 
 ---
 
-## 📦 Getting Started
+## Getting Started
 
 1. **Clone & enter** the repo:  
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/lgreg1908/papa_rag.git
    cd rag_app
    ```
 
@@ -75,7 +78,6 @@ We’ve built the core ingestion and embedding pipeline, plus a minimal Streamli
    ```dotenv
     OPENAI_API_KEY=your_api_key_here
     # (optional) OPENAI_EMBEDDING_MODEL=text-embedding-ada-002
-    # (optional) CLIP_MODEL_NAME=clip-ViT-B-32
     ```
 
 5. **Run the App**:
@@ -86,23 +88,50 @@ We’ve built the core ingestion and embedding pipeline, plus a minimal Streamli
     - Click **Connect** to load and view counts of your files.
 
 6. **Run demos**:
-    > **Note:** Before running the demos, place your sample PDFs, Word docs, text files, and images into the `data/tmp` folder.
+    > **Note:** Before running the demos, place your sample PDFs, Word docs, text files, and images into the `data/sample` folder. By default, the folder sample documents related to a fantasy corruption case.
+
+    __Individual modules__
 
     ```bash
-    # Preprocessing demo (normalizes text & extracts metadata)
-    python src/processing/preprocess.py
 
-    # Embeddings demo (generates text & image embeddings)
-    python src/processing/embeddings.py
+    # Loader demo (loads the sample documents)
+    python -m src.ingestion.loader
+
+    # Preprocessing demo (normalizes text)
+    python -m src.processing.preprocess
+
+    # Embeddings demo (generates text embeddings)
+    python -m src.processing.embeddings
+
+    # Vector store (adds to and query from vector store 2d embeddings)
+    python -m src.retrieval.vector_store
+
+    # Retriever (adds to and query from vector store sample data)
+    python -m src.retrieval.retriever
+
     ```
+
+    __Full pipeline__
+    ```bash
+
+    # Create vector store
+    python -m src.main ingest <folder-name>
+
+    # Start the watcher
+    python -m src.main watch <folder-name>
+
+    # Query the store
+    python -m src.main search <query> --top_k <top-k>
+
+    ```
+
 7. **Run tests**:
     ```bash
     pytest -q
     ```
 
-## 🔭 Next Steps
+## Next Steps
 
-- **Vector Store & Retrieval**: Build out `src/retrieval/vector_store.py` (FAISS index, add/remove vectors, persistence) and `src/retrieval/retriever.py` (semantic + keyword search).
 - **RAG & QA**: Integrate LangChain’s RetrievalQA chains to answer questions over your document corpus.
 - **Tagging & Diff Viewer**: Implement `src/tagging/tagger.py` for LLM-driven auto-tagging and manual tag editing, plus side-by-side diff views.
 - **UI Enhancements**: Extend the Streamlit app with search input, result lists (snippets + thumbnails), tag filters, and a Q&A panel.

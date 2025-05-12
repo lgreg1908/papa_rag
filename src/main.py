@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import sys
-import os
-
-from PIL import Image
 from langchain.schema import Document
 
 from src.ingestion.loader import load_folder
@@ -29,7 +25,6 @@ def build_index(folder: str, text_store: FaissVectorStore) -> None:
     # Create vector store
     text_store.add_documents(docs_emb)
     print(f"[INGEST] Indexed {len(docs_emb)} text documents")
-
 
 
 def start_watcher(folder: str, text_store: FaissVectorStore) -> None:

@@ -77,5 +77,8 @@ def main() -> None:
     chunk_docs = chunk_documents(norm_docs)
     print(f"Created {len(chunk_docs)} chunks from {len(docs)} documents.")
 
+    for doc in chunk_docs:
+        print(doc.metadata['chunk_id'])
+
 if __name__ == '__main__':
     main()

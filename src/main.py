@@ -12,21 +12,29 @@ from src.processing.preprocess import normalize_documents
 from src.processing.embeddings import embed_documents, get_text_embeddings
 from src.retrieval.vector_store import FaissVectorStore
 from src.retrieval.retriever import Retriever
-
+from src.retrieval.whoosh_utils import build_whoosh_index
 
 def build_index(folder: str, text_store: FaissVectorStore) -> None:
     """
     One-shot ingest: load, preprocess, embed, and index all files in `folder` into a vector store.
     """
     print(f"[INGEST] Scanning folder: {folder}")
-    raw_docs = load_folder(folder)
+    raw_docs: list[Document] = load_folder(folder)
     print(f"[INGEST] Loaded {len(raw_docs)} document chunks.")
 
     # Preprocess & embed text
-    docs_norm = normalize_documents(raw_docs)
-    docs_emb = embed_documents(docs_norm)
+    docs_norm: list[Document] = normalize_documents(raw_docs)
+    docs_emb: list[Document] = embed_documents(docs_norm)
+
+    # Create vector store
     text_store.add_documents(docs_emb)
     print(f"[INGEST] Indexed {len(docs_emb)} text documents")
+    
+    # Create whoosh index
+    whoosh_dir = "data/whoosh_index"
+    print(f"[INGEST] Building Whoosh keyword index at '{whoosh_dir}'")
+    build_whoosh_index(index_dir=whoosh_dir, docs=docs_norm)
+    print("[INGEST] Whoosh index built.\n")
 
 
 def start_watcher(folder: str, text_store: FaissVectorStore) -> None:
@@ -37,7 +45,10 @@ def start_watcher(folder: str, text_store: FaissVectorStore) -> None:
         docs_norm = normalize_documents(docs)
         docs_emb = embed_documents(docs_norm)
         text_store.add_documents(docs_emb)
-        print(f"[WATCH] Indexed {len(docs_emb)} text chunks")
+        print(f"[WATCH] Indexed {len(docs_emb)} documents")
+        whoosh_dir = "data/whoosh_index"
+        build_whoosh_index(index_dir=whoosh_dir, docs=docs_norm)
+
 
     watcher = FolderWatcher(folder, callback)
     print(f"[WATCH] Monitoring {folder} (Ctrl+C to stop)...")

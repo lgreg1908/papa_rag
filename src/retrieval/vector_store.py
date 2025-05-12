@@ -10,12 +10,13 @@ class FaissVectorStore:
     """
     A simple FAISS-backed vector store for LangChain Documents.
 
-    Persists index and metadata to disk.
+    Persists index and metadata to disk, supports storing and retrieving embeddings
+    along with per-document metadata, including retrieval distances.
     """
     def __init__(
             self, 
-            index_path: str='data/embeddings.faiss',
-            meta_path: str='data/metadata.pkl'
+            index_path: str = 'data/embeddings.faiss',
+            meta_path: str = 'data/metadata.pkl'
         ):
         """
         Args:
@@ -37,8 +38,7 @@ class FaissVectorStore:
         if os.path.exists(self.index_path) and os.path.exists(self.meta_path):
             self.index = faiss.read_index(self.index_path)
             with open(self.meta_path, 'rb') as f:
-                self.metadata = pickle.load(f) 
-        
+                self.metadata = pickle.load(f)
         else:
             self.index = None
             self.metadata = []
@@ -47,16 +47,15 @@ class FaissVectorStore:
         """
         Persist the FAISS index and metadata list to disk.
         """
-        # Check if dirs exist
         for path in (self.index_path, self.meta_path):
             dirpath = os.path.dirname(path)
             if dirpath and not os.path.exists(dirpath):
                 os.makedirs(dirpath, exist_ok=True)
-        
+
         faiss.write_index(self.index, self.index_path)
         with open(self.meta_path, 'wb') as f:
             pickle.dump(self.metadata, f)
-            
+
     def add_documents(self, docs: List[Document]) -> None:
         """
         Add documents (must have 'embedding' in metadata) to the index.
@@ -65,9 +64,8 @@ class FaissVectorStore:
             docs: List of LangChain Document objects with precomputed embeddings.
         """
         if not docs:
-            return 
-        
-        # Extract vectors and metadata
+            return
+
         vectors = []
         for doc in docs:
             vec = doc.metadata.get('embedding')
@@ -75,12 +73,13 @@ class FaissVectorStore:
                 raise ValueError("Document missing 'embedding' in metadata")
             vectors.append(vec)
             self.metadata.append(dict(doc.metadata))
+
         arr = np.array(vectors, dtype='float32')
-        
+
         if self.index is None:
             dim = arr.shape[1]
             self.index = faiss.IndexFlatL2(dim)
-        
+
         self.index.add(arr)
         self._save()
 
@@ -93,24 +92,28 @@ class FaissVectorStore:
         Perform a nearest-neighbor search against the index.
 
         Args:
-            query_embedding: Single embedding vector (list of floats).
+            query_embeddings: Single embedding vector (list of floats).
             top_k: Number of nearest neighbors to return.
 
         Returns:
-            List of Document objects reconstructed from metadata (no content).
+            List of Document objects reconstructed from metadata (no content),
+            each with an additional 'distance' field in metadata indicating
+            the L2 distance to the query for confidence purposes.
         """
         if self.index is None:
             return []
-        
+
         vec = np.array(query_embeddings, dtype='float32').reshape(1, -1)
-        _, indices = self.index.search(vec, top_k)
-        results: List[Document]=[]
-        for idx in indices[0]:
-            if idx < len(self.metadata):
-                meta = self.metadata[idx]
+        distances, indices = self.index.search(vec, top_k)
+        results: List[Document] = []
+
+        for dist, idx in zip(distances[0], indices[0]):
+            if 0 <= idx < len(self.metadata):
+                meta = dict(self.metadata[idx])
+                meta['distance'] = float(dist)
                 results.append(Document(page_content='', metadata=meta))
         return results
-    
+
     def delete(self) -> None:
         """
         Remove on-disk index and metadata, and reset in-memory state.
@@ -121,6 +124,7 @@ class FaissVectorStore:
             os.remove(self.meta_path)
         self.index = None
         self.metadata = []
+
 
 def main() -> None:
     """
@@ -156,7 +160,7 @@ def main() -> None:
     results = store.search(query_vec, top_k=3)
     print(f"\nTop 3 results for query {query_vec}:")
     for rank, doc in enumerate(results, start=1):
-        print(f"{rank}. source={doc.metadata['source']}, embedding={doc.metadata['embedding']}")
+        print(f"{rank}. source={doc.metadata['source']}, embedding={doc.metadata['embedding']}, distance={doc.metadata['distance']}")
     os.remove('data/embeddings_test.faiss')
     os.remove('data/metadata_test.pkl')
 

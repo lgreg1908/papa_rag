@@ -8,11 +8,10 @@ from langchain.schema import Document
 
 from src.ingestion.loader import load_folder
 from src.ingestion.watcher import FolderWatcher
-from src.processing.preprocess import normalize_documents
+from src.processing.preprocess import normalize_documents, chunk_documents
 from src.processing.embeddings import embed_documents, get_text_embeddings
 from src.retrieval.vector_store import FaissVectorStore
-from src.retrieval.retriever import Retriever
-from src.retrieval.whoosh_utils import build_whoosh_index
+
 
 def build_index(folder: str, text_store: FaissVectorStore) -> None:
     """
@@ -24,31 +23,28 @@ def build_index(folder: str, text_store: FaissVectorStore) -> None:
 
     # Preprocess & embed text
     docs_norm: list[Document] = normalize_documents(raw_docs)
-    docs_emb: list[Document] = embed_documents(docs_norm)
+    docs_chunked: list[Document] = chunk_documents(docs_norm)
+    docs_emb: list[Document] = embed_documents(docs_chunked)
 
     # Create vector store
     text_store.add_documents(docs_emb)
     print(f"[INGEST] Indexed {len(docs_emb)} text documents")
-    
-    # Create whoosh index
-    whoosh_dir = "data/whoosh_index"
-    print(f"[INGEST] Building Whoosh keyword index at '{whoosh_dir}'")
-    build_whoosh_index(index_dir=whoosh_dir, docs=docs_norm)
-    print("[INGEST] Whoosh index built.\n")
+
 
 
 def start_watcher(folder: str, text_store: FaissVectorStore) -> None:
     """
     Watch a folder and auto-index new or modified files into separate stores.
     """
-    def callback(docs):
-        docs_norm = normalize_documents(docs)
-        docs_emb = embed_documents(docs_norm)
-        text_store.add_documents(docs_emb)
-        print(f"[WATCH] Indexed {len(docs_emb)} documents")
-        whoosh_dir = "data/whoosh_index"
-        build_whoosh_index(index_dir=whoosh_dir, docs=docs_norm)
+    def callback(docs: list[Document]):
+        # Preprocess and embed
+        docs_norm: list[Document] = normalize_documents(docs)
+        docs_chunked: list[Document] = chunk_documents(docs_norm)
+        docs_emb: list[Document] = embed_documents(docs_chunked)
 
+        # Add to store
+        text_store.add_documents(docs_emb)
+        print(f"[WATCH] Indexed {len(docs_emb)} text documents")
 
     watcher = FolderWatcher(folder, callback)
     print(f"[WATCH] Monitoring {folder} (Ctrl+C to stop)...")

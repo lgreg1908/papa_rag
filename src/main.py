@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 import argparse
-import sys
-import os
-
-from PIL import Image
 from langchain.schema import Document
 
 from src.ingestion.loader import load_folder
 from src.ingestion.watcher import FolderWatcher
-from src.processing.preprocess import normalize_documents
+from src.processing.preprocess import normalize_documents, chunk_documents
 from src.processing.embeddings import embed_documents, get_text_embeddings
 from src.retrieval.vector_store import FaissVectorStore
-from src.retrieval.retriever import Retriever
 
 
 def build_index(folder: str, text_store: FaissVectorStore) -> None:
@@ -19,12 +14,15 @@ def build_index(folder: str, text_store: FaissVectorStore) -> None:
     One-shot ingest: load, preprocess, embed, and index all files in `folder` into a vector store.
     """
     print(f"[INGEST] Scanning folder: {folder}")
-    raw_docs = load_folder(folder)
+    raw_docs: list[Document] = load_folder(folder)
     print(f"[INGEST] Loaded {len(raw_docs)} document chunks.")
 
     # Preprocess & embed text
-    docs_norm = normalize_documents(raw_docs)
-    docs_emb = embed_documents(docs_norm)
+    docs_norm: list[Document] = normalize_documents(raw_docs)
+    docs_chunked: list[Document] = chunk_documents(docs_norm)
+    docs_emb: list[Document] = embed_documents(docs_chunked)
+
+    # Create vector store
     text_store.add_documents(docs_emb)
     print(f"[INGEST] Indexed {len(docs_emb)} text documents")
 
@@ -33,11 +31,15 @@ def start_watcher(folder: str, text_store: FaissVectorStore) -> None:
     """
     Watch a folder and auto-index new or modified files into separate stores.
     """
-    def callback(docs):
-        docs_norm = normalize_documents(docs)
-        docs_emb = embed_documents(docs_norm)
+    def callback(docs: list[Document]):
+        # Preprocess and embed
+        docs_norm: list[Document] = normalize_documents(docs)
+        docs_chunked: list[Document] = chunk_documents(docs_norm)
+        docs_emb: list[Document] = embed_documents(docs_chunked)
+
+        # Add to store
         text_store.add_documents(docs_emb)
-        print(f"[WATCH] Indexed {len(docs_emb)} text chunks")
+        print(f"[WATCH] Indexed {len(docs_emb)} text documents")
 
     watcher = FolderWatcher(folder, callback)
     print(f"[WATCH] Monitoring {folder} (Ctrl+C to stop)...")
@@ -50,8 +52,14 @@ def search_text(query: str, text_store: FaissVectorStore, top_k: int) -> None:
     vec = get_text_embeddings([query])[0]
     results = text_store.search(vec, top_k)
     for i, doc in enumerate(results, start=1):
-        print(f"{i}. {doc.metadata.get('source')} on text index")
+        print(f"{i}. {doc.metadata.get('chunk_id')}. Distance: {doc.metadata.get('distance')}")
 
+def reset_index(text_store: FaissVectorStore) -> None:
+    """
+    Delete on-disk index and metadata to start fresh.
+    """
+    text_store.delete()
+    print("[RESET] FAISS index and metadata cleared.")
 
 def main():
     parser = argparse.ArgumentParser(description="RAG Document Explorer CLI with separate text/image indices")
@@ -70,6 +78,9 @@ def main():
     p_st.add_argument('query', help='Text query')
     p_st.add_argument('--top_k', type=int, default=5)
 
+    # reset
+    sub.add_parser("reset", help="Delete the FAISS index and metadata files")
+
     args = parser.parse_args()
 
     # Initialize separate stores
@@ -81,6 +92,8 @@ def main():
         start_watcher(args.folder, text_store)
     elif args.cmd == 'search':
         search_text(args.query, text_store, args.top_k)
+    elif args.cmd == "reset":
+        reset_index(text_store)
     else:
         parser.print_help()
 

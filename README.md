@@ -30,6 +30,7 @@ We’ve built the core ingestion and embedding pipeline, plus a minimal Streamli
 ### Processing
 - **`src/processing/preprocess.py`** —  
   • `normalize_documents(docs)`  
+  • `chunk_documents(docs, chunk_size, chunk_overlap)`  
 
 - **`src/processing/embeddings.py`** —  
   • `get_text_embeddings(texts)` (OpenAI v1 SDK + cache)  
@@ -38,9 +39,6 @@ We’ve built the core ingestion and embedding pipeline, plus a minimal Streamli
 ### Retrieval
 - **`src/retrieval/vector_store.py`** —  
   • `FaissVectorStore(index_path, meta_path)`
-
-- **`src/retrieval/retriever.py`** —  
-  • `Retriever(vector_store, whoosh_index_dir, whoosh_field)` retrieves from store with optional whoops keyword fallback
 
 ### Frontend
 - **`src/app.py`** (Streamlit) —  
@@ -103,12 +101,6 @@ We’ve built the core ingestion and embedding pipeline, plus a minimal Streamli
     # Embeddings demo (generates text embeddings)
     python -m src.processing.embeddings
 
-    # Vector store (adds to and query from vector store 2d embeddings)
-    python -m src.retrieval.vector_store
-
-    # Retriever (adds to and query from vector store sample data)
-    python -m src.retrieval.retriever
-
     ```
 
     __Full pipeline__
@@ -136,7 +128,3 @@ We’ve built the core ingestion and embedding pipeline, plus a minimal Streamli
 - **Tagging & Diff Viewer**: Implement `src/tagging/tagger.py` for LLM-driven auto-tagging and manual tag editing, plus side-by-side diff views.
 - **UI Enhancements**: Extend the Streamlit app with search input, result lists (snippets + thumbnails), tag filters, and a Q&A panel.
 - **Packaging**: Create a `pyproject.toml` or `setup.py` for `pip install -e .`, and refine the Docker image for distribution.
-
-
-
-

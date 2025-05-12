@@ -1,6 +1,7 @@
 import re
 from typing import List
 from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
 def normalize_documents(docs: List[Document]) -> List[Document]:
@@ -31,6 +32,31 @@ def normalize_documents(docs: List[Document]) -> List[Document]:
         )
     return normalized
 
+def chunk_documents(
+    docs: List[Document],
+    chunk_size: int = 1000,
+    chunk_overlap: int = 200
+) -> List[Document]:
+    """
+    Split documents into fixed-size, overlapping chunks—and tag each one with
+    a unique `chunk_id` based on its source path and position.
+    """
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap
+    )
+    chunked: List[Document] = []
+    for doc in docs:
+        src = doc.metadata.get("source") or doc.metadata.get("file_path", "")
+        # split_documents returns a list of Documents
+        for i, piece in enumerate(splitter.split_documents([doc])):
+            meta = dict(doc.metadata)  # copy original metadata
+            # create a unique chunk identifier
+            meta["chunk_id"] = f"{src}__chunk_{i}"
+            chunked.append(
+                Document(page_content=piece.page_content, metadata=meta)
+            )
+    return chunked
 
 def main() -> None:
     """
@@ -45,7 +71,14 @@ def main() -> None:
 
     # Normalize
     norm_docs = normalize_documents(docs)
-    print(f"Normalized {len(norm_docs)} documents.\nSample content:\n{norm_docs[0].page_content[:100]}...\n")
+    print(f"Normalized {len(norm_docs)} documents.\nSample content:\n{norm_docs[0].page_content[:25]}...\n")
+
+    # Chunk
+    chunk_docs = chunk_documents(norm_docs)
+    print(f"Created {len(chunk_docs)} chunks from {len(docs)} documents.")
+
+    for doc in chunk_docs:
+        print(doc.metadata['chunk_id'])
 
 if __name__ == '__main__':
     main()

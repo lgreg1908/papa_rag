@@ -1,4 +1,5 @@
 import os
+from src.utils.logger import logger
 from typing import List
 from langchain.schema import Document
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader, UnstructuredMarkdownLoader
@@ -9,7 +10,16 @@ TEXT_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
 
 def list_supported_files(folder_path: str) -> List[str]:
     """
-    Recursively list all supported files in the given folder.
+    Recursively search for and list all supported document files in a directory.
+
+    This function walks through the directory tree rooted at `folder_path`,
+    and collects paths for files whose extensions match those defined in TEXT_EXTENSIONS.
+
+    Args:
+        folder_path (str): The root directory to begin the search.
+
+    Returns:
+        List[str]: A list of full file paths for supported document types found under the directory.
     """
     file_paths: List[str] = []
     for root, _, files in os.walk(folder_path):
@@ -21,8 +31,20 @@ def list_supported_files(folder_path: str) -> List[str]:
 
 def load_documents(paths: List[str]) -> List[Document]:
     """
-    Load text documents from given file paths using LangChain loaders.
-    Returns a list of LangChain Document objects.
+    Load a batch of files into LangChain Document objects, using the appropriate loader
+    for each supported extension. Errors during loading are logged as warnings and
+    processing continues with the next file.
+
+    Args:
+        paths (List[str]): A list of file paths to load. Supported extensions are:
+            - .pdf   → PyPDFLoader
+            - .docx  → Docx2txtLoader
+            - .txt   → TextLoader (UTF-8)
+            - .md    → UnstructuredMarkdownLoader
+
+    Returns:
+        List[Document]: A flat list of all Document objects produced by the loaders
+                        for the successfully processed files.
     """
     docs: List[Document] = []
     for path in paths:
@@ -41,16 +63,23 @@ def load_documents(paths: List[str]) -> List[Document]:
                 loader = UnstructuredMarkdownLoader(path)
                 docs.extend(loader.load())
         except Exception as e:
-            print(f"Error loading document {path}: {e}")
+            logger.warning(f"Error loading document {path}: {e}")
     return docs
 
 def load_folder(folder_path: str) -> List[Document]:
     """
-    Load all supported files in the folder:
-      - Text documents → LangChain Document objects
-      - Images → (path, PIL Image)
+    Discover and load all supported documents in a directory.
 
-    Returns a tuple (documents, images).
+    This function combines `list_supported_files` and `load_documents` to provide
+    a one-stop method for retrieving all documents from a folder tree. Only files
+    with extensions defined in TEXT_EXTENSIONS are considered.
+
+    Args:
+        folder_path (str): The directory path to scan and load documents from.
+
+    Returns:
+        List[Document]: A list of loaded Document objects ready for processing.
+
     """
     paths = list_supported_files(folder_path)
     text_paths = [i for i in paths if os.path.splitext(i)[1].lower()]

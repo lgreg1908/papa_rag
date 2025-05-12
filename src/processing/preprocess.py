@@ -38,23 +38,25 @@ def chunk_documents(
     chunk_overlap: int = 200
 ) -> List[Document]:
     """
-    Split a list of Documents into smaller, overlapping chunks.
-
-    Args:
-        docs (List[Document]): List of pre-normalized LangChain Document objects.
-        chunk_size (int): Maximum number of characters (or tokens) per chunk.
-        chunk_overlap (int): Number of characters (or tokens) to overlap between chunks.
-
-    Returns:
-        List[Document]: A flat list of Document objects, each containing
-                        a chunk of the original text with preserved metadata.
+    Split documents into fixed-size, overlapping chunks—and tag each one with
+    a unique `chunk_id` based on its source path and position.
     """
-    splitter: RecursiveCharacterTextSplitter = RecursiveCharacterTextSplitter(
+    splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap
     )
-    chunked_docs: List[Document] = splitter.split_documents(docs)
-    return chunked_docs
+    chunked: List[Document] = []
+    for doc in docs:
+        src = doc.metadata.get("source") or doc.metadata.get("file_path", "")
+        # split_documents returns a list of Documents
+        for i, piece in enumerate(splitter.split_documents([doc])):
+            meta = dict(doc.metadata)  # copy original metadata
+            # create a unique chunk identifier
+            meta["chunk_id"] = f"{src}__chunk_{i}"
+            chunked.append(
+                Document(page_content=piece.page_content, metadata=meta)
+            )
+    return chunked
 
 def main() -> None:
     """

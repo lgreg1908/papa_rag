@@ -78,7 +78,7 @@ def main() -> None:
     searcher = ix.searcher()
     parser = QueryParser("content", schema=ix.schema)
 
-    for query_text in ["kickback", "machine learning", "streamlit"]:
+    for query_text in ["kickback", "learning", "streamlit"]:
         print(f"Results for '{query_text}':")
         q = parser.parse(query_text)
         hits = searcher.search(q, limit=5)

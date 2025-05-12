@@ -6,7 +6,7 @@ from whoosh import index as whoosh_index
 from whoosh.qparser import QueryParser
 from langchain.schema import Document
 
-from src.retrieval.whoosh_utils import build_whoosh_index
+from src.retrieval.whoosh_index import build_whoosh_index
 
 
 def make_docs() -> list[Document]:

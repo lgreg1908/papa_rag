@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import sys
-import os
-
-from PIL import Image
 from langchain.schema import Document
 
 from src.ingestion.loader import load_folder
@@ -31,7 +27,6 @@ def build_index(folder: str, text_store: FaissVectorStore) -> None:
     print(f"[INGEST] Indexed {len(docs_emb)} text documents")
 
 
-
 def start_watcher(folder: str, text_store: FaissVectorStore) -> None:
     """
     Watch a folder and auto-index new or modified files into separate stores.
@@ -57,8 +52,14 @@ def search_text(query: str, text_store: FaissVectorStore, top_k: int) -> None:
     vec = get_text_embeddings([query])[0]
     results = text_store.search(vec, top_k)
     for i, doc in enumerate(results, start=1):
-        print(f"{i}. {doc.metadata.get('source')} on text index")
+        print(f"{i}. {doc.metadata.get('chunk_id')}. Distance: {doc.metadata.get('distance')}")
 
+def reset_index(text_store: FaissVectorStore) -> None:
+    """
+    Delete on-disk index and metadata to start fresh.
+    """
+    text_store.delete()
+    print("[RESET] FAISS index and metadata cleared.")
 
 def main():
     parser = argparse.ArgumentParser(description="RAG Document Explorer CLI with separate text/image indices")
@@ -77,6 +78,9 @@ def main():
     p_st.add_argument('query', help='Text query')
     p_st.add_argument('--top_k', type=int, default=5)
 
+    # reset
+    sub.add_parser("reset", help="Delete the FAISS index and metadata files")
+
     args = parser.parse_args()
 
     # Initialize separate stores
@@ -88,6 +92,8 @@ def main():
         start_watcher(args.folder, text_store)
     elif args.cmd == 'search':
         search_text(args.query, text_store, args.top_k)
+    elif args.cmd == "reset":
+        reset_index(text_store)
     else:
         parser.print_help()
 

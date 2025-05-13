@@ -7,6 +7,8 @@ from src.ingestion.watcher import FolderWatcher
 from src.processing.preprocess import normalize_documents, chunk_documents
 from src.processing.embeddings import embed_documents, get_text_embeddings
 from src.retrieval.vector_store import FaissVectorStore
+from src.qa.qa import answer_question
+from src.utils.scoring import distance_to_score
 
 
 def build_index(folder: str, text_store: FaissVectorStore) -> None:
@@ -19,12 +21,12 @@ def build_index(folder: str, text_store: FaissVectorStore) -> None:
 
     # Preprocess & embed text
     docs_norm: list[Document] = normalize_documents(raw_docs)
-    docs_chunked: list[Document] = chunk_documents(docs_norm)
+    docs_chunked: list[Document] = chunk_documents(docs_norm, chunk_size=250, chunk_overlap=50)
     docs_emb: list[Document] = embed_documents(docs_chunked)
 
     # Create vector store
     text_store.add_documents(docs_emb)
-    print(f"[INGEST] Indexed {len(docs_emb)} text documents")
+    print(f"[INGEST] Indexed {len(docs_emb)} chunks from {len(docs_norm)} documents")
 
 
 def start_watcher(folder: str, text_store: FaissVectorStore) -> None:
@@ -34,7 +36,7 @@ def start_watcher(folder: str, text_store: FaissVectorStore) -> None:
     def callback(docs: list[Document]):
         # Preprocess and embed
         docs_norm: list[Document] = normalize_documents(docs)
-        docs_chunked: list[Document] = chunk_documents(docs_norm)
+        docs_chunked: list[Document] = chunk_documents(docs_norm, chunk_size=500, chunk_overlap=100)
         docs_emb: list[Document] = embed_documents(docs_chunked)
 
         # Add to store
@@ -53,6 +55,21 @@ def search_text(query: str, text_store: FaissVectorStore, top_k: int) -> None:
     results, dists = text_store.search(vec, top_k)
     for i, (doc, dist) in enumerate(zip(results, dists), start=1):
         print(f"{i}. {doc.metadata.get('chunk_id')}. {dist}")
+
+def run_qa(query: str, text_store: FaissVectorStore, top_k: int) -> None:
+    """
+    Retrieve top‐k chunks, call the LLM, and display answer + sources.
+    """
+    print(f"[QA] Question: \"{query}\" (top_k={top_k})\n")
+    vec = get_text_embeddings([query])[0]
+    docs, dists = text_store.search(vec, top_k)
+    answer, used = answer_question(query, docs)
+    print("=== Answer ===")
+    print(answer)
+    print("\n=== Sources ===")
+    for doc, dist in zip(used, dists):
+        cid = doc.metadata.get("chunk_id", "<chunk>")
+        print(f"- {cid} - relevance: {distance_to_score(dist, max_distance=2, min_score=0, max_score=1)}, distance:{dist}")
 
 def reset_index(text_store: FaissVectorStore) -> None:
     """
@@ -78,22 +95,29 @@ def main():
     p_st.add_argument('query', help='Text query')
     p_st.add_argument('--top_k', type=int, default=5)
 
+    # qa
+    p_qa = sub.add_parser("qa", help="Ask a question over indexed documents")
+    p_qa.add_argument("question", help="Natural language question")
+    p_qa.add_argument("--top_k", type=int, default=5)
+
     # reset
     sub.add_parser("reset", help="Delete the FAISS index and metadata files")
 
     args = parser.parse_args()
 
     # Initialize separate stores
-    text_store = FaissVectorStore(index_path='data/vector_store.faiss', meta_path='data/metadata.pkl')
+    store = FaissVectorStore(index_path='data/vector_store.faiss', meta_path='data/metadata.pkl')
 
     if args.cmd == 'ingest':
-        build_index(args.folder, text_store)
+        build_index(args.folder, store)
     elif args.cmd == 'watch':
-        start_watcher(args.folder, text_store)
+        start_watcher(args.folder,  store)
     elif args.cmd == 'search':
-        search_text(args.query, text_store, args.top_k)
+        search_text(args.query, store, args.top_k)
+    elif args.cmd == "qa":
+        run_qa(args.question, store, args.top_k)
     elif args.cmd == "reset":
-        reset_index(text_store)
+        reset_index(store)
     else:
         parser.print_help()
 

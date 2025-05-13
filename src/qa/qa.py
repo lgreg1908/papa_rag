@@ -129,7 +129,7 @@ def main():
 
     for question in questions:
         print(f"\n=== QUESTION ===\n{question}\n")
-        answer, used = answer_question(question, docs)
+        answer, _ = answer_question(question, docs)
         print("=== ANSWER ===")
         print(answer)
         print("\n" + "="*40)

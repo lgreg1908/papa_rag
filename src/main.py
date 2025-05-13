@@ -50,9 +50,9 @@ def search_text(query: str, text_store: FaissVectorStore, top_k: int) -> None:
     """Search text-only index."""
     print(f"[SEARCH] Query: '{query}' (top_k={top_k})")
     vec = get_text_embeddings([query])[0]
-    results = text_store.search(vec, top_k)
-    for i, doc in enumerate(results, start=1):
-        print(f"{i}. {doc.metadata.get('chunk_id')}. Distance: {doc.metadata.get('distance')}")
+    results, dists = text_store.search(vec, top_k)
+    for i, (doc, dist) in enumerate(zip(results, dists), start=1):
+        print(f"{i}. {doc.metadata.get('chunk_id')}. {dist}")
 
 def reset_index(text_store: FaissVectorStore) -> None:
     """

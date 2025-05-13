@@ -3,7 +3,6 @@ import argparse
 from langchain.schema import Document
 
 from src.ingestion.loader import load_folder
-from src.ingestion.watcher import FolderWatcher
 from src.processing.preprocess import normalize_documents, chunk_documents
 from src.processing.embeddings import embed_documents, get_text_embeddings
 from src.retrieval.vector_store import FaissVectorStore
@@ -27,25 +26,6 @@ def build_index(folder: str, text_store: FaissVectorStore) -> None:
     # Create vector store
     text_store.add_documents(docs_emb)
     print(f"[INGEST] Indexed {len(docs_emb)} chunks from {len(docs_norm)} documents")
-
-
-def start_watcher(folder: str, text_store: FaissVectorStore) -> None:
-    """
-    Watch a folder and auto-index new or modified files into separate stores.
-    """
-    def callback(docs: list[Document]):
-        # Preprocess and embed
-        docs_norm: list[Document] = normalize_documents(docs)
-        docs_chunked: list[Document] = chunk_documents(docs_norm, chunk_size=500, chunk_overlap=100)
-        docs_emb: list[Document] = embed_documents(docs_chunked)
-
-        # Add to store
-        text_store.add_documents(docs_emb)
-        print(f"[WATCH] Indexed {len(docs_emb)} text documents")
-
-    watcher = FolderWatcher(folder, callback)
-    print(f"[WATCH] Monitoring {folder} (Ctrl+C to stop)...")
-    watcher.run()
 
 
 def search_text(query: str, text_store: FaissVectorStore, top_k: int) -> None:
@@ -86,10 +66,6 @@ def main():
     p_ingest = sub.add_parser('ingest', help='One-shot ingest of a folder')
     p_ingest.add_argument('folder', help='Folder to ingest')
 
-    # watch
-    p_watch = sub.add_parser('watch', help='Watch a folder and index changes')
-    p_watch.add_argument('folder', help='Folder to watch')
-
     # search-text
     p_st = sub.add_parser('search', help='Search by text query')
     p_st.add_argument('query', help='Text query')
@@ -110,8 +86,6 @@ def main():
 
     if args.cmd == 'ingest':
         build_index(args.folder, store)
-    elif args.cmd == 'watch':
-        start_watcher(args.folder,  store)
     elif args.cmd == 'search':
         search_text(args.query, store, args.top_k)
     elif args.cmd == "qa":
